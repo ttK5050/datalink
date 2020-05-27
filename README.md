@@ -14,5 +14,10 @@ Suggestions and pull requests are welcome. Please open an issue to discuss the c
 ## Authors
 FSX Datalink was developed by [Kevin Treehan](kevin.treehan.com) as a final project for OCS15 @ Stanford University OHS.
 
+Credit for the libraries used:
+[JSimConnect](https://github.com/mharj/jsimconnect): a port of SimConnect to Java
+[Trident Animations](https://github.com/kirill-grouchnikov/radiance): a powerful Java animation library
+[SteelSeries](https://github.com/HanSolo/SteelSeries-Swing): a Swing library for data rendering
+
 ## Contact
 [Contact me through LinkedIn.](linkedin.com/in/kevintreehan/)
