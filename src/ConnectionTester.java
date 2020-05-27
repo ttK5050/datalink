@@ -1,8 +1,5 @@
-
-//java imports
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -11,49 +8,45 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
 import javax.swing.BorderFactory;
-import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.JTextArea;
 import javax.swing.border.Border;
-
-import java.io.IOException;
 import javax.swing.Timer;
-
-//simconnect imports
 import flightsim.simconnect.SimConnect;
-import flightsim.simconnect.SimConnectDataType;
 import flightsim.simconnect.SimConnectPeriod;
-import flightsim.simconnect.config.ConfigurationNotFoundException;
-import flightsim.simconnect.recv.DispatcherTask;
-import flightsim.simconnect.recv.ExceptionHandler;
-import flightsim.simconnect.recv.OpenHandler;
-import flightsim.simconnect.recv.RecvException;
-import flightsim.simconnect.recv.RecvOpen;
-import flightsim.simconnect.recv.RecvSimObjectData;
-import flightsim.simconnect.recv.SimObjectDataHandler;
 
+/**
+ * @author: Kevin Treehan
+ * Image assets created by Kevin Treehan using open clipart
+ * 
+ * Launched by the Menu class, the ConnectionTester attempts
+ * to establish a connection with the SimConnect server. If
+ * it can connect successfully, it launches the ControlPanel
+ * class. If it can't secure a port, it allows the option to
+ * return to the Menu class, or bypass for GUI testing.
+ * 
+ */
 public class ConnectionTester {
 	
+    //create global variables
 	private JFrame frame;
 	
 	public ConnectionTester() {
+	    //when new instance, just call init()
 		init();
 	}
 	
 	private void init(){
 		
+	    //set up frame and panel with GridBagConstraints layout
     	frame = new JFrame();
     	frame.setTitle("FSX DataLink Connection Test");
-    	
     	JPanel panel1 = new JPanel();
     	panel1.setBorder(BorderFactory.createEmptyBorder(0,50,20,50));
     	panel1.setLayout(new GridBagLayout());
@@ -68,7 +61,7 @@ public class ConnectionTester {
     	JLabel infoMessage = new JLabel("Please make sure FSX is open.");
     	infoMessage.setFont(new Font("San Serif", Font.ITALIC, 13));
     	
-    	//set up log area
+    	//set up log area (where messages can be displayed)
     	JTextArea logArea = new JTextArea(2, 30);
     	logArea.setText("Scanning ports...");
     	logArea.setFont(new Font("Courier New", Font.PLAIN, 10));
@@ -78,10 +71,9 @@ public class ConnectionTester {
     	logArea.setBorder(BorderFactory.createCompoundBorder(border,
         BorderFactory.createEmptyBorder(10, 10, 10, 10)));
     	
-    	//have a back button
+    	//have a back button to exit to the menu, and a bypass button for GUI testing w/out functionality
     	ImageIcon imgBack = new ImageIcon(new ImageIcon("Resources/BackIcon.png", "Back Icon").getImage().getScaledInstance(80, 80, Image.SCALE_SMOOTH));
     	JLabel labelBack = new JLabel(imgBack);
-    	
     	JButton bypass = new JButton("Bypass for testing.");
     	
     	//add items to the panel
@@ -113,6 +105,7 @@ public class ConnectionTester {
     	    }
     	});
     	
+        //have an action listener for the bypass button
     	bypass.addActionListener(new ActionListener() {
     	    @Override
     	    public void actionPerformed(ActionEvent e) {
@@ -126,6 +119,7 @@ public class ConnectionTester {
     	    }
     	});
     	
+    	//pack and go
     	panel1.setBackground(Color.WHITE);
     	frame.add(panel1, BorderLayout.CENTER);
     	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -134,22 +128,23 @@ public class ConnectionTester {
     	frame.setLocationRelativeTo(null);
     	frame.setVisible(true);
     	
-    	//now, search for an FSX signal
-    	
+    	//search for an SimConnect local server signal
     	try {
 			
+    	    //show log attempts with user on panel log area
     		logArea.setText(logArea.getText() + "\nAttempting link...");
-    		SimConnect sc = new SimConnect("GetVariable", 0);
+    		new SimConnect("GetVariable", 0);
     		logArea.setText(logArea.getText() + "\nLink successful!");
-			SimConnectPeriod p = SimConnectPeriod.SIM_FRAME;
+            @SuppressWarnings("unused")
+            SimConnectPeriod p = SimConnectPeriod.SIM_FRAME;
     		logArea.setText(logArea.getText() + "\nTime period: FRAME");
     		logArea.setText(logArea.getText() + "\nLaunching Control Panel...");
     		
-    		//change image
+    		//if success...
         	Timer timer = new Timer(2000, new ActionListener() {
     		  @Override
     		  public void actionPerformed(ActionEvent arg0) {
-    	        	
+    		      //in 2000 ms, dispose this frame and launch the actual control panel
     			  frame.dispose();
     			  new ControlPanel().start();
     			  
@@ -159,16 +154,19 @@ public class ConnectionTester {
     		timer.start();
 			
     	} catch (Exception e) {
-    		//output the error
+    	    
+    		//if not a success, output the error
     		System.out.println(e.getMessage());
-    		
+    
+            //log it
     		logArea.setText(logArea.getText() + "\nERROR: " + e.getMessage() + "\nGo back and try again.");
         	logArea.setForeground(new Color(235, 64, 52));
         	
-        	//change image
+        	//change image to 'check engine light'
         	Timer timer = new Timer(1000, new ActionListener() {
     		  @Override
     		  public void actionPerformed(ActionEvent arg0) {
+    		        //in 1000 ms, show that the load failed, user can bypass if wanted or go back to menu
     	        	labelLoad.setIcon(new ImageIcon("Resources/SadAnimation.gif", "Load Fail"));
     		  }
     		});
@@ -177,8 +175,6 @@ public class ConnectionTester {
         	
     	}
     	
-    	
-
 	}
 
 }

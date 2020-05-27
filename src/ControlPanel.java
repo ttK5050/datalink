@@ -1,76 +1,61 @@
-//java imports
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.ComponentOrientation;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
-import java.awt.Paint;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
 import javax.swing.BorderFactory;
-import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
-import javax.swing.border.Border;
 import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-
 import org.xml.sax.InputSource;
-
 import eu.hansolo.steelseries.gauges.*;
 import eu.hansolo.steelseries.tools.BackgroundColor;
 import eu.hansolo.steelseries.tools.LcdColor;
 import eu.hansolo.steelseries.tools.*;
-import eu.hansolo.steelseries.resources.*;
-
 import java.io.IOException;
 import java.io.StringReader;
 import java.text.DecimalFormat;
 import java.util.HashMap;
-
 import javax.swing.Timer;
-
-//simconnect imports
-import flightsim.simconnect.SimConnect;
-import flightsim.simconnect.SimConnectDataType;
-import flightsim.simconnect.SimConnectPeriod;
 import flightsim.simconnect.config.ConfigurationNotFoundException;
-import flightsim.simconnect.recv.DispatcherTask;
-import flightsim.simconnect.recv.ExceptionHandler;
-import flightsim.simconnect.recv.OpenHandler;
-import flightsim.simconnect.recv.RecvException;
-import flightsim.simconnect.recv.RecvOpen;
-import flightsim.simconnect.recv.RecvSimObjectData;
-import flightsim.simconnect.recv.SimObjectDataHandler;
 
+/**
+ * @author: Kevin Treehan
+ * Image assets created by Kevin Treehan using open clipart
+ * 
+ * This is the main application class. It uses the FSXConnector
+ * to retrieve data from the SimConnect server class and display
+ * it. It also interprets the data to the platform specifications.
+ * 
+ */
 public class ControlPanel extends Thread implements ISimData {
 	
+    //create global variable for frame
 	private JFrame frame;
-	private JTextArea logArea;
+	
+	//create HashMap to store the text fields used for displaying raw and platform information
 	private HashMap<String, JTextField> rawValues = new HashMap<String, JTextField>();
 	private HashMap<String, JTextField> platformValues = new HashMap<String, JTextField>();
 	
+	//create global variables for the data gauges
 	private Radial pitchVelocityGauge, rollVelocityGauge, yawVelocityGauge;
 	private Radial pitchPlatformGauge, pitchVelocityPlatformGauge;
 	private Radial rollPlatformGauge, rollVelocityPlatformGauge;
 	private DigitalRadial yAccelGauge, xAccelGauge, zAccelGauge;
 	
+    //create some more global variables for the footer control bar
 	private ImageIcon imgToggle;
 	private JLabel labelToggle;
 	private ImageIcon imgToggleDisplay;
@@ -79,9 +64,10 @@ public class ControlPanel extends Thread implements ISimData {
 	private JLabel labelCautionDisplay;
 	private DisplaySingle frameCounterLcd;
 	private JTextField rollConstraints, pitchConstraints, yawConstraints;
-	private JTextField rollWashout, pitchWashout, yawWashout;
-	private JTextField pitchVelocityLimit, rollVelocityLimit, yawVelocityLimit;
+	private JTextField rollWashout, pitchWashout;
+	private JTextField pitchVelocityLimit, rollVelocityLimit;
 	
+	//internal variables that record flags
 	private boolean inputToggleOn = false;
 	private int numFramesElapsed;
 	private long lastRecordedFrameTime;
@@ -94,7 +80,6 @@ public class ControlPanel extends Thread implements ISimData {
 	static final LcdColor LCD_BACK = LcdColor.DARKBLUE_LCD;
 	static final FrameDesign GAUGE_FRAME = FrameDesign.ANTHRACITE;
 	static final Color GAUGE_GLOW = new Color(212, 255, 243);
-	
 	static final BackgroundColor PLATFORM_GAUGE_BACK = BackgroundColor.LIGHT_GRAY;
 	static final LcdColor PLATFORM_LCD_BACK = LcdColor.GREEN_LCD;
 	static final FrameDesign PLATFORM_GAUGE_FRAME = FrameDesign.GLOSSY_METAL;
@@ -102,12 +87,13 @@ public class ControlPanel extends Thread implements ISimData {
 
 	 
 	public ControlPanel() {
+	    //when instanitiated, just call init()
 		init();
 	}
 	
 	private void init() {
 		
-		// construct the window
+		//construct the window
 		frame = new JFrame();
     	frame.setTitle("FSX DataLink Control Panel");	    	
     	JPanel panel1 = new JPanel();
@@ -117,7 +103,7 @@ public class ControlPanel extends Thread implements ISimData {
     	constraints.anchor = GridBagConstraints.CENTER;
 
     	
-    	// add logo to top
+    	//add logo to top
     	constraints.gridwidth = 6;
     	ImageIcon imgLogo = new ImageIcon(new ImageIcon("Resources/LogoHeader.png", "FSX Datalink").getImage().getScaledInstance(200, 40, Image.SCALE_SMOOTH));
     	JLabel labelLogo = new JLabel(imgLogo);
@@ -127,7 +113,7 @@ public class ControlPanel extends Thread implements ISimData {
     	constraints.gridy = 1;
     	panel1.add(nameLabel, constraints);
     	
-    	// add straight axes labels
+    	//add straight axes labels (because gauge does not support internal title)
     	constraints.gridwidth = 1;
     	JLabel rawYLabel = new JLabel("Up/Down Accel (abs)");
     	JLabel rawZLabel = new JLabel("Front/Back Accel (abs)");
@@ -140,7 +126,7 @@ public class ControlPanel extends Thread implements ISimData {
     	constraints.gridx = 2;
     	panel1.add(rawXLabel, constraints);
 
-        // set up y acceleration gauge (up and down)
+        //set up y acceleration gauge (up and down)
     	constraints.insets = new Insets(0,0,10,0);
     	constraints.ipadx = 100; 
     	constraints.ipady = 100; 
@@ -162,7 +148,7 @@ public class ControlPanel extends Thread implements ISimData {
     	yAccelGauge.setBackgroundColor(GAUGE_BACK);
     	panel1.add(yAccelGauge, constraints);
         
-        // z is forward back (negative) 
+        //z is forward back (negative) 
     	constraints.gridx = 1;
     	zAccelGauge = new DigitalRadial();
     	zAccelGauge.setTitle("Straight Acceleration");
@@ -178,7 +164,7 @@ public class ControlPanel extends Thread implements ISimData {
     	zAccelGauge.setBackgroundColor(GAUGE_BACK);
     	panel1.add(zAccelGauge, constraints);
     	
-        // x is side side (positive is west, negative is east)
+        //x is side side (positive is west, negative is east)
     	constraints.gridx = 2;
     	xAccelGauge = new DigitalRadial();
     	xAccelGauge.setTitle("Side Acceleration");
@@ -194,7 +180,7 @@ public class ControlPanel extends Thread implements ISimData {
     	xAccelGauge.setBackgroundColor(GAUGE_BACK);
     	panel1.add(xAccelGauge, constraints);
     	
-    	// set up the radial pitch velocity gauge
+    	//set up the radial pitch velocity gauge
         constraints.gridy = 4; 
     	constraints.gridx = 0;
     	pitchVelocityGauge = new Radial();
@@ -205,7 +191,6 @@ public class ControlPanel extends Thread implements ISimData {
     	pitchVelocityGauge.setValueAnimated(0);
     	pitchVelocityGauge.setThreshold(0.4);
     	pitchVelocityGauge.setThresholdType(ThresholdType.ARROW);    	
-    	//pitchVelocityGauge.setThresholdVisible(true);
     	pitchVelocityGauge.setLcdVisible(true);
     	pitchVelocityGauge.setLcdDecimals(3);
     	pitchVelocityGauge.setBackgroundColor(GAUGE_BACK);
@@ -216,7 +201,7 @@ public class ControlPanel extends Thread implements ISimData {
     	pitchVelocityGauge.setGlowVisible(true);
         panel1.add(pitchVelocityGauge, constraints);
         
-    	// set up the radial roll velocity gauge
+    	//set up the radial roll velocity gauge
         constraints.gridx = 1;    
     	constraints.insets = new Insets(0,0,0,0);
     	rollVelocityGauge = new Radial();
@@ -238,7 +223,7 @@ public class ControlPanel extends Thread implements ISimData {
     	rollVelocityGauge.setGlowVisible(true);
         panel1.add(rollVelocityGauge, constraints);
         
-    	// set up the radial yaw velocity gauge
+    	//set up the radial yaw velocity gauge
         constraints.gridx = 2;    
     	yawVelocityGauge = new Radial();
     	yawVelocityGauge.setTitle("Yaw Velocity");
@@ -254,12 +239,11 @@ public class ControlPanel extends Thread implements ISimData {
     	yawVelocityGauge.setThreshold(0.6);
     	yawVelocityGauge.setThresholdType(ThresholdType.ARROW);
     	yawVelocityGauge.setFrameDesign(GAUGE_FRAME);
-    	//yawVelocityGauge.setThresholdVisible(true);
     	yawVelocityGauge.setGlowColor(GAUGE_GLOW);
     	yawVelocityGauge.setGlowVisible(true);
         panel1.add(yawVelocityGauge, constraints);
         
-        // set up the radial platform pitch gauge
+        //set up the radial platform pitch gauge
     	constraints.gridx = 3;
     	pitchPlatformGauge = new Radial();
     	pitchPlatformGauge.setTitle("Platform Pitch");
@@ -268,7 +252,6 @@ public class ControlPanel extends Thread implements ISimData {
     	pitchPlatformGauge.setMaxValue(20);
     	pitchPlatformGauge.setValueAnimated(0);
     	pitchPlatformGauge.setThresholdType(ThresholdType.ARROW);    	
-    	//pitchVelocityGauge.setThresholdVisible(true);
     	pitchPlatformGauge.setLcdVisible(true);
     	pitchPlatformGauge.setLcdDecimals(3);
     	pitchPlatformGauge.setBackgroundColor(PLATFORM_GAUGE_BACK);
@@ -279,7 +262,7 @@ public class ControlPanel extends Thread implements ISimData {
     	pitchPlatformGauge.setGlowVisible(true);
         panel1.add(pitchPlatformGauge, constraints);
         
-        // set up the radial platform velocity pitch gauge
+        //set up the radial platform velocity pitch gauge
     	constraints.gridx = 4;
     	pitchVelocityPlatformGauge = new Radial();
     	pitchVelocityPlatformGauge.setTitle("Platform Pitch Velocity");
@@ -288,7 +271,6 @@ public class ControlPanel extends Thread implements ISimData {
     	pitchVelocityPlatformGauge.setMaxValue(10);
     	pitchVelocityPlatformGauge.setValueAnimated(0);
     	pitchVelocityPlatformGauge.setThresholdType(ThresholdType.ARROW);    	
-    	//pitchVelocityGauge.setThresholdVisible(true);
     	pitchVelocityPlatformGauge.setLcdVisible(true);
     	pitchVelocityPlatformGauge.setLcdDecimals(3);
     	pitchVelocityPlatformGauge.setBackgroundColor(PLATFORM_GAUGE_BACK);
@@ -299,7 +281,7 @@ public class ControlPanel extends Thread implements ISimData {
     	pitchVelocityPlatformGauge.setGlowVisible(true);
         panel1.add(pitchVelocityPlatformGauge, constraints);
         
-        // set up the radial platform roll gauge
+        //set up the radial platform roll gauge
         constraints.gridy = 3; 
     	constraints.gridx = 3;
     	rollPlatformGauge = new Radial();
@@ -309,7 +291,6 @@ public class ControlPanel extends Thread implements ISimData {
     	rollPlatformGauge.setMaxValue(20);
     	rollPlatformGauge.setValueAnimated(0);
     	rollPlatformGauge.setThresholdType(ThresholdType.ARROW);    	
-    	//pitchVelocityGauge.setThresholdVisible(true);
     	rollPlatformGauge.setLcdVisible(true);
     	rollPlatformGauge.setLcdDecimals(3);
     	rollPlatformGauge.setBackgroundColor(PLATFORM_GAUGE_BACK);
@@ -320,7 +301,7 @@ public class ControlPanel extends Thread implements ISimData {
     	rollPlatformGauge.setGlowVisible(true);
         panel1.add(rollPlatformGauge, constraints);
         
-        // set up the radial platform velocity pitch gauge
+        //set up the radial platform velocity pitch gauge
     	constraints.gridx = 4;
     	rollVelocityPlatformGauge = new Radial();
     	rollVelocityPlatformGauge.setTitle("Platform Roll Velocity");
@@ -329,7 +310,6 @@ public class ControlPanel extends Thread implements ISimData {
     	rollVelocityPlatformGauge.setMaxValue(10);
     	rollVelocityPlatformGauge.setValueAnimated(0);
     	rollVelocityPlatformGauge.setThresholdType(ThresholdType.ARROW);    	
-    	//pitchVelocityGauge.setThresholdVisible(true);
     	rollVelocityPlatformGauge.setLcdVisible(true);
     	rollVelocityPlatformGauge.setLcdDecimals(3);
     	rollVelocityPlatformGauge.setBackgroundColor(PLATFORM_GAUGE_BACK);
@@ -340,13 +320,14 @@ public class ControlPanel extends Thread implements ISimData {
     	rollVelocityPlatformGauge.setGlowVisible(true);
         panel1.add(rollVelocityPlatformGauge, constraints);
 
-    	// set up raw variable stacks
+    	//set up raw variable stacks
     	constraints.gridheight = 1;
     	constraints.gridwidth = 1;
     	constraints.ipady = 5;
     	constraints.weightx = 0.7;
     	constraints.weighty = 0.5;
 
+    	//straight positions stacks
     	JLabel rawLatLabel = new JLabel("Latitude");
     	JLabel rawLongLabel = new JLabel("Longitude");
     	JLabel rawAltLabel = new JLabel("Altitude");
@@ -357,6 +338,7 @@ public class ControlPanel extends Thread implements ISimData {
     	JTextField rawAlt = new JTextField("......", 6);
     	rawAlt.setEditable(false);
     	
+        //straight axial accelerations
     	JLabel rawAccelXLabel = new JLabel("Accel X");
     	JLabel rawAccelYLabel = new JLabel("Accel Y");
     	JLabel rawAccelZLabel = new JLabel("Accel Z");
@@ -367,6 +349,7 @@ public class ControlPanel extends Thread implements ISimData {
     	JTextField rawAccelZ = new JTextField("......", 6);
     	rawAccelZ.setEditable(false);
     	
+        //rotational positions
     	JLabel rawHeadingLabel = new JLabel("Yaw");
     	JLabel rawPitchLabel = new JLabel("Pitch");
     	JLabel rawRollLabel = new JLabel("Roll");
@@ -377,6 +360,7 @@ public class ControlPanel extends Thread implements ISimData {
     	JTextField rawRoll = new JTextField("......", 6);
     	rawRoll.setEditable(false);
     	
+        //rotational axial velocities
     	JLabel rawOmegaXLabel = new JLabel("Omega Pitch");
     	JLabel rawOmegaYLabel = new JLabel("Omega Yaw");
     	JLabel rawOmegaZLabel = new JLabel("Omega Roll");
@@ -387,24 +371,21 @@ public class ControlPanel extends Thread implements ISimData {
     	JTextField rawOmegaZ = new JTextField("......", 6);
     	rawOmegaZ.setEditable(false);
     	
-    	// add the platform text fields
+    	//add the platform text fields
     	JLabel platformPitchLabel = new JLabel("Sim Pitch");
     	JLabel platformPitchOmegaLabel = new JLabel("Sim Pitch Omega");
-    	JLabel platformPitchAlphaLabel = new JLabel("Sim Pitch Alpha");
     	JTextField platformPitch = new JTextField("0", 6);
     	platformPitch.setEditable(false);
     	JTextField platformPitchVelocity = new JTextField("0", 6);
     	platformPitchVelocity.setEditable(false);
-    	
     	JLabel platformRollLabel = new JLabel("Sim Roll");
     	JLabel platformRollOmegaLabel = new JLabel("Sim Roll Omega");
-    	JLabel platformRollAlphaLabel = new JLabel("Sim Roll Alpha");
     	JTextField platformRoll = new JTextField("0", 6);
     	platformRoll.setEditable(false);
     	JTextField platformRollVelocity = new JTextField("0", 6);
     	platformRollVelocity.setEditable(false);
     	
-    	// add all text fields to the hashmap
+    	//add all raw text fields to the HashMaps (so they can be accessed outside the method) 
     	rawValues.put("Plane Latitude", rawLat);
     	rawValues.put("Plane Longitude", rawLong);
     	rawValues.put("Plane Altitude", rawAlt);
@@ -418,12 +399,13 @@ public class ControlPanel extends Thread implements ISimData {
     	rawValues.put("Rotation Velocity Body Y", rawOmegaY);
     	rawValues.put("Rotation Velocity Body Z", rawOmegaZ);
     	
+        //add all platform text fields to the HashMap
     	platformValues.put("Pitch Position", platformPitch);
     	platformValues.put("Pitch Velocity", platformPitchVelocity);
     	platformValues.put("Roll Position", platformRoll);
     	platformValues.put("Roll Velocity", platformRollVelocity);
     	
-    	// add components to the panel
+    	//add components to the panel
     	constraints.ipady = 5;
     	constraints.weightx = 1;
     	constraints.gridx = 0;
@@ -516,6 +498,7 @@ public class ControlPanel extends Thread implements ISimData {
     	panel1.add(platformRollVelocity, constraints);
     	constraints.gridx = 5;
     	
+    	//work on creating the footer (with separate constraints)
     	JPanel panel2 = new JPanel();
     	panel2.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
     	panel2.setLayout(new GridBagLayout());
@@ -524,6 +507,7 @@ public class ControlPanel extends Thread implements ISimData {
     	constraints2.ipadx = 5;
     	constraints2.insets = new Insets(10,0,5,0);
     	
+    	//add the toggle and display lights
     	imgToggle = new ImageIcon(new ImageIcon("Resources/OffToggle.png", "Toggle Off Icon").getImage().getScaledInstance(30, 60, Image.SCALE_SMOOTH));
     	labelToggle = new JLabel(imgToggle);
     	panel2.add(labelToggle, constraints2);
@@ -537,6 +521,8 @@ public class ControlPanel extends Thread implements ISimData {
        	panel2.add(labelCautionDisplay, constraints2);
        	constraints2.gridx = 3;
        	constraints2.weightx = 0.05;
+       	
+        //add the frame counter lcd display
        	frameCounterLcd = new DisplaySingle();
        	frameCounterLcd.setLcdUnitString("frames");
        	frameCounterLcd.setLcdColor(LcdColor.BLACK_LCD);
@@ -544,7 +530,7 @@ public class ControlPanel extends Thread implements ISimData {
        	frameCounterLcd.setLcdDecimals(0);
        	panel2.add(frameCounterLcd, constraints2);
        	
-       	// add constraints textfields
+       	//add constraints text fields
        	constraints2.gridy = 1;
        	constraints2.weightx = 0;
        	constraints2.weighty = 0;
@@ -571,7 +557,6 @@ public class ControlPanel extends Thread implements ISimData {
        	constraints2.gridx = 2;
     	yawConstraints = new JTextField("10",2);
        	panel2.add(yawConstraints, constraints2);
-       	
        	constraints2.gridy = 1;
        	constraints2.gridx = 6;
        	constraints2.weightx = 0;
@@ -590,7 +575,6 @@ public class ControlPanel extends Thread implements ISimData {
        	constraints2.gridx = 7;
     	pitchWashout = new JTextField("0.5",2);
        	panel2.add(pitchWashout, constraints2);
-       	
        	constraints2.gridy = 1;
        	constraints2.gridx = 3;
        	constraints2.weightx = 0;
@@ -610,9 +594,8 @@ public class ControlPanel extends Thread implements ISimData {
     	pitchVelocityLimit = new JTextField("2",2);
        	panel2.add(pitchVelocityLimit, constraints2);
        	constraints2.gridx = 5;
-    	
        	
-    	// set up footer settings
+    	//set up footer settings with the original panel and add it in to the bottom
     	constraints.gridwidth = 6;
     	constraints.gridx = 0;
     	constraints.gridy = 13;
@@ -623,21 +606,26 @@ public class ControlPanel extends Thread implements ISimData {
     	panel2.setBackground(Color.LIGHT_GRAY);
     	panel1.add(panel2, constraints);
     	       	
-       	// deal with toggle click
+       	//deal with toggle click
        	labelToggle.addMouseListener(new MouseAdapter() {
     	    @Override
-    	    public void mouseClicked(MouseEvent e) 
-    	    {
+    	    public void mouseClicked(MouseEvent e) {
+    	        
+    	        //if the toggle is currently on...
     	    	if (inputToggleOn) {
     	    		
+    	    	    //turn it off
     	    		imgToggle = new ImageIcon(new ImageIcon("Resources/OffToggle.png", "Toggle Off Icon").getImage().getScaledInstance(30, 60, Image.SCALE_SMOOTH));
         	    	labelToggle.setIcon(imgToggle);
         	    	
+        	    	//turn off the stream light
         	    	imgToggleDisplay = new ImageIcon(new ImageIcon("Resources/OffLight.png", "Off Light").getImage().getScaledInstance(80, 60, Image.SCALE_SMOOTH));
         	    	labelToggleDisplay.setIcon(imgToggleDisplay);
     	    		
+        	    	//set the variable flag to false
         	    	inputToggleOn = false;
         	     	
+        	    	//enable the constraints to be edited
         	    	rollConstraints.setEnabled(true);
         	    	pitchConstraints.setEnabled(true);
         	    	yawConstraints.setEnabled(true);
@@ -646,6 +634,7 @@ public class ControlPanel extends Thread implements ISimData {
         	    	rollVelocityLimit.setEnabled(true);
         	    	pitchVelocityLimit.setEnabled(true);
         	    	
+        	    	//turn the gauges off
         	    	pitchVelocityGauge.setGlowing(false);
         	    	rollVelocityGauge.setGlowing(false);
                     yawVelocityGauge.setGlowing(false);
@@ -656,14 +645,18 @@ public class ControlPanel extends Thread implements ISimData {
         	    	
     	    	} else {
     	    		
+    	    	    //if we're turning it on, turn the toggle on
         	    	imgToggle = new ImageIcon(new ImageIcon("Resources/OnToggle.png", "Toggle On Icon").getImage().getScaledInstance(30, 60, Image.SCALE_SMOOTH));
         	    	labelToggle.setIcon(imgToggle);
         	    	
+                    //light up the stream icon
         	    	imgToggleDisplay = new ImageIcon(new ImageIcon("Resources/OnLight.png", "On Light").getImage().getScaledInstance(80, 60, Image.SCALE_SMOOTH));
         	    	labelToggleDisplay.setIcon(imgToggleDisplay);
         	    	
+        	    	//set the flag to true
         	    	inputToggleOn = true;
         	    	
+        	    	//lock in the constraints
         	    	rollConstraints.setEnabled(false);
         	    	pitchConstraints.setEnabled(false);
         	    	yawConstraints.setEnabled(false);
@@ -672,6 +665,7 @@ public class ControlPanel extends Thread implements ISimData {
         	    	rollVelocityLimit.setEnabled(false);
         	    	pitchVelocityLimit.setEnabled(false);
         	    	
+        	    	//start the gauges
             	    pitchVelocityGauge.setGlowing(true);
             	    rollVelocityGauge.setGlowing(true);
                     yawVelocityGauge.setGlowing(true);
@@ -685,16 +679,16 @@ public class ControlPanel extends Thread implements ISimData {
     	    }
     	});
 
-    	// set up and display window
+    	//pack and...
     	panel1.setBackground(Color.WHITE);
     	frame.add(panel1, BorderLayout.CENTER);
     	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    	//frame.setResizable(false);
     	frame.pack();
     	frame.setLocationRelativeTo(null);
+    	
+    	//flicker the window and resize it slightly so that the gauges render correct size
         frame.setVisible(true);
         frame.setVisible(false);
-    	
     	frame.setPreferredSize(new Dimension((int)frame.getSize().getWidth()+1, (int)frame.getSize().getHeight()+1));
         frame.pack();
         frame.setLocationRelativeTo(null);
@@ -706,15 +700,20 @@ public class ControlPanel extends Thread implements ISimData {
 	@Override
 	public void run() {
 		try {
-						
+			
+		    //every 100 ms...
 			Timer timer = new Timer(100, new ActionListener() {
     		  @Override
     		  public void actionPerformed(ActionEvent arg0) {
-    	        	
+    	        
+    		    //check if the stream is frozen (usually means user paused FSX)
     			if (System.currentTimeMillis() - lastRecordedFrameTime > 1000) {
+    			    
+    			    //set the caution light on
   					imgCautionDisplay = new ImageIcon(new ImageIcon("Resources/OnCaution.png", "On Caution").getImage().getScaledInstance(80, 60, Image.SCALE_SMOOTH));
           	    	labelCautionDisplay.setIcon(imgCautionDisplay);
           	    	
+          	    	//set the lights on the gauges on a warning pulse
           	    	pitchVelocityGauge.setGlowPulsating(true);
         	    	rollVelocityGauge.setGlowPulsating(true);
         	    	yawVelocityGauge.setGlowPulsating(true);
@@ -722,6 +721,7 @@ public class ControlPanel extends Thread implements ISimData {
         	    	rollVelocityGauge.setLedBlinking(true);
         	    	yawVelocityGauge.setLedBlinking(true);
         	    	
+                    //set the lights on the gauges on a warning pulse
         	    	pitchPlatformGauge.setGlowPulsating(true);
         	    	pitchVelocityPlatformGauge.setGlowPulsating(true);
         	    	rollPlatformGauge.setGlowPulsating(true);
@@ -731,15 +731,19 @@ public class ControlPanel extends Thread implements ISimData {
         	    	rollPlatformGauge.setLedBlinking(true);
         	    	rollVelocityPlatformGauge.setLedBlinking(true);
         	    	
+        	    	//flag it as having recently gone off
         	    	cautionRecentlyOff = true;
-        	    	
+                 
   				} else if (cautionRecentlyOff && System.currentTimeMillis() - lastRecordedFrameTime < 1000) {
   					
+  				    //now, flag it as off
   					cautionRecentlyOff = false;
   					
+  					//hit the caution off
           	    	imgCautionDisplay = new ImageIcon(new ImageIcon("Resources/OffCaution.png", "Off Caution").getImage().getScaledInstance(80, 60, Image.SCALE_SMOOTH));
           	    	labelCautionDisplay.setIcon(imgCautionDisplay);
           	    	
+          	    	//stop the lights
           	    	pitchVelocityGauge.setGlowPulsating(false);
         	    	rollVelocityGauge.setGlowPulsating(false);
         	    	yawVelocityGauge.setGlowPulsating(false);
@@ -747,6 +751,7 @@ public class ControlPanel extends Thread implements ISimData {
         	    	rollVelocityGauge.setLedBlinking(false);
         	    	yawVelocityGauge.setLedBlinking(false);
         	    	
+                    //stop the lights
         	    	pitchPlatformGauge.setGlowPulsating(false);
         	    	pitchVelocityPlatformGauge.setGlowPulsating(false);
                     rollPlatformGauge.setGlowPulsating(false);
@@ -763,6 +768,7 @@ public class ControlPanel extends Thread implements ISimData {
     		timer.setRepeats(true);
     		timer.start();
 			
+    		//launch a new instance of FSXConnector and pass this as the client
 			new FSXConnector(this, null);
 						
 		} catch (IOException | ConfigurationNotFoundException e) {
@@ -772,26 +778,36 @@ public class ControlPanel extends Thread implements ISimData {
 	
 	@Override
 	public void processData(String xml) {
+	    
 		SwingUtilities.invokeLater(new Runnable() {
             public void run() { 
+                
+                //refresh the latest time the frame came in
             	lastRecordedFrameTime = System.currentTimeMillis();
-            	numFramesElapsed++;
+            	
+            	//update the frame counter lcd in the footer
+                numFramesElapsed++;
             	frameCounterLcd.setLcdValue(numFramesElapsed);
             	
             	if (!FSXConnector.isConnected && inputToggleOn) {
+            	    //if we're not connected and the toggle is on, set the caution light on
             		imgCautionDisplay = new ImageIcon(new ImageIcon("Resources/OnCaution.png", "On Caution").getImage().getScaledInstance(80, 60, Image.SCALE_SMOOTH));
         	    	labelCautionDisplay.setIcon(imgCautionDisplay);
             	} else if (!inputToggleOn) {
+            	    //if we're not trying to read in data (even though it is streaming) return out
             		return;
             	}
-
+            	
+            	//set up the XML parsing
                 DecimalFormat df = new DecimalFormat("#.###");
                 XPath xPath = XPathFactory.newInstance().newXPath();
                 double result = -1;
                 String fieldName = "";
                 
+                //iterate over the text fields in the global HashMaps
                 for (HashMap.Entry<String,JTextField> entry : rawValues.entrySet()) {
                 	
+                    //open the XML
                 	InputSource inputXML = new InputSource( new StringReader( xml ) );
                     
                 	//for each text field, search for matching input value
@@ -800,15 +816,16 @@ public class ControlPanel extends Thread implements ISimData {
     				try {
     					
     					if (fieldName.contains("degrees")) {
+    					    //if it is a degrees measurement, convert the radian input to degrees with decimal formatting
 							result = Double.parseDouble(xPath.evaluate("/current_info/"+fieldName+"", inputXML)) * (180.0/Math.PI);
-							//rawValues.get(entry.getKey()).setText(df.format(result) + "�");
 							rawValues.get(entry.getKey()).setText(df.format(result));
-
 						} else {
+						    //throw it in directly with formatting
 	    					result = Double.parseDouble(xPath.evaluate("/current_info/"+fieldName+"", inputXML));
 							rawValues.get(entry.getKey()).setText(df.format(result));
 						}
     					
+    					//if the keys match the data, set their values
     					if (entry.getKey().equals("Rotation Velocity Body X")) {
 							pitchVelocityGauge.setValue(-1.0*result);
 						} else if (entry.getKey().equals("Rotation Velocity Body Y")) {
@@ -829,14 +846,7 @@ public class ControlPanel extends Thread implements ISimData {
                 	
                 }
                 
-                ///////////////////////////////////////////////////////////////////////////
-                ///////////////////////////////////////////////////////////////////////////
-                //////////////////////   PLATFORM CALCULATIONS   //////////////////////////
-                ///////////////////////////////////////////////////////////////////////////
-                ///////////////////////////////////////////////////////////////////////////
-                
                 // Kevin's TODO
-                // incorporate yaw mapping to roll axis?
                 
                 // set sim pitch velocity
                 if (Double.parseDouble(rawValues.get("Rotation Velocity Body X").getText()) > Double.parseDouble(pitchVelocityLimit.getText())) {
@@ -894,6 +904,7 @@ public class ControlPanel extends Thread implements ISimData {
                     onCountFrame = 0;
                 }
                 
+                //set the gauges to the text fields
                 rollVelocityPlatformGauge.setValue(Double.parseDouble(platformValues.get("Roll Velocity").getText()));
                 rollPlatformGauge.setValue(Double.parseDouble(platformValues.get("Roll Position").getText()));
                 
@@ -910,10 +921,11 @@ public class ControlPanel extends Thread implements ISimData {
                     onCountFrame = 0;
                 }
                 
+                //set the gauges to the text fields
                 pitchVelocityPlatformGauge.setValue(Double.parseDouble(platformValues.get("Pitch Velocity").getText()));
                 pitchPlatformGauge.setValue(Double.parseDouble(platformValues.get("Pitch Position").getText()));
                 
-                
+                //increment the frame
                 onCountFrame++;
                 
             }
